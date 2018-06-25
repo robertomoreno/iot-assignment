@@ -33,7 +33,7 @@ sbt docker
 docker-compose -f docker/docker-compose.yml up
 ```
 
-8 containers should be running (they are explained in the next section), they may
+7 containers should be running (they are explained in the next section), they may
 take a while until the cluster converge. If one or some of the containers are killed
 just start it again using:
 
@@ -75,10 +75,16 @@ In this case, 5 is the number of vehicles that will run, if no number is provide
 default to 3. Every client launch a pair of Fuel and Position events.
 
 To see how the cluster scales and recovery from crash, this command can be run to
-stop a container
+stop a container. The most interesting nodes to check the scaling up/down is the
+'storer' kind containers.
 
 ```bash
+# To stop a node starting by docker compose
 docker-compose -f docker/docker-compose.yml stop container_name
+
+# Example of how to start an extra node that is not registered by docker compose. AKKA_PORT ev must match the exposed port
+docker run -p 2553:2551 -e "AKKA_HOST=${HOST_IP}" -e "AKKA_PORT=2553" iot-assignment-storer
+
 ```
 
 > Notice that, under the current configuration, at least one of the containers
@@ -87,57 +93,60 @@ nodes can join into the cluster
 
 # Architecture
 
-The application runs on an Akka Actors Cluster (Language is Scala for convenience
-but there is a Java API as well). Akka actors is a design pattern that excels in several fields:
+The application runs on an Akka Actors Cluster (Language is Scala but there is a
+Java API as well). Akka actors is a design pattern that excels in several fields:
 - Location transparency: This means that where the actor runs (same JDK or different server), 
 it's just a matter of configuration
 - Handle state on asynchronous systems.
 - Fail recovery and resiliency.
 
 In order to improve the reads and writes performance, a CRQS architecture is used.
-This means that the reads and writes are decoupled in different systems. Reads a
-writes has different requirements:
+This means that the reads and writes are decoupled in different systems since they 
+have different requirements:
 
 - writes needs to be reliables
 - reads needs to be fast
+
+![CQRS](docs/CQRS.jpg)
+
+> Every layer in the schema above relates to one module in the app
 
 ## Writes Side
 
 To maximise the throughput in the writes side, we are using Cassandra together with
 Event Sourcing. Event Sourcing is a technique to handle events in which you store
 every single event. Nothing is updated or deleted, state is not keep in the database
-but the events that drives to that state. This as several benefits:
+but the events that drives to that state. This has several benefits:
 
-- Store data is very efficient, only Add fields.
-- No lose data. What happens if the business logic changes or if there was a bug?
+- Store data is very efficient, it is only ADD registers.
+- No data lost. What happens if the business logic changes or if there was a bug?
 We just need to re-run the data applying the new logic changes.
 
 Of course Event Sourcing has some problems as well but Akka help us to fix them:
 
-- Takes to long to read all the events after a restart. To minimize this, snapshots 
+- Takes long to read all the events after a restart. To minimize this, snapshots 
 are created, they contains the current state every X events so we can start from there.
-- Is hard to read, How to query? Every vehicle set of events are handle by a single
+- Is hard to read, How to query?. Every vehicle set of events are handle by a single
 actor so this actor keeps the state in memory until it's not needed. This way we
 can validate events based on the current state and no hit to the database is needed.
 (maximising the writes)
 
 ## Reads Side
 
-Once that the events have been stored into the database we can start to prepare
-the data to be query. An event stream is created so an independent app can
-consume the events and prepare them to expose them. In our case, and for 
-convenience, a message is sent to another cluster node but this task could be
-achieve as well with a microservice endpoint or event bus (as Kafka or Kinesis)
-so we can decouple the apps from each other, making it possible to use other
-technologies.
+Once that the events have been stored into the database they are pushed through 
+an event stream so an independent app can consume and prepare them to be exposed. 
+In our case, and for convenience, a message is sent withing the cluster to another
+node but this task could be achieve as well with a microservice endpoint or an 
+event bus (like Kafka or Kinesis) so we can decouple the different layers from 
+each other, making it possible to use other technologies.
 
 Our downstream application just storage data in memory so it's lost if the actor
-is stopped which is not very nice (but convenient for this example). To persist
-the data read oriented databases as ElasticSearch or Distributed Cached system
-as Hazelcast can be used. Other possibility is that the downstream app push the
-data to a Websocket channel. In the case of storage the data in a Database it's
-common that the downstream app aggregates the data by it's own so the writes 
-could be reduced.
+is stopped. This can be fine for some cases but probably we want to persist the
+data to be query later, Read oriented databases as ElasticSearch or Distributed 
+Cached systems as Hazelcast can be used. Other possibility is that the downstream 
+app push the data to a Websocket channel. In the case of storage the data in a 
+database it's common that the downstream app aggregates the data by it's own so 
+the writes can be reduced.
 
 The last part of the Read Side is the interface to the user that wants to query
 it. In our case is just a REST API.
@@ -147,12 +156,12 @@ it. In our case is just a REST API.
 ## Messaging reliability
 
 Akka uses a 'at most once' model for messaging. This means that some messages can be
-lost at some (rare) case. The reason for this is that Akka has been built with
-performance in mind. For some case, like this one, could be worthy to lose some
-messages and to not lose performance ACKing messages.
+lost at some (rare) case. The reason is Akka has been built with performance in 
+mind. For some case, like this one, could be worthy to lose some messages and to
+not lose performance ACKing messages.
 
 ## Messages serialization
 
 By default, Akka uses Java serialization to send the messages, which is awful. 
-It is possible to use other serializations (like protobuf) to improve the performance
-and network use.
+It is possible to use other serializers like Protobuf to improve the performance
+and network usage.

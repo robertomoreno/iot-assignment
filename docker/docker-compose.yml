@@ -43,14 +43,6 @@ services:
     environment:
       - AKKA_HOST=${HOST_IP}
 
-  storer_3:
-    image: "iot-assignment-storer"
-    ports:
-      - "2552:2551"
-    environment:
-      - AKKA_HOST=${HOST_IP}
-      - AKKA_PORT=2552
-
   reader_1:
       image: "iot-assignment-reader"
       ports:

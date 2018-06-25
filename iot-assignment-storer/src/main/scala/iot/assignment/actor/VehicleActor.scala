@@ -21,6 +21,7 @@ class VehicleActor(publisher: PublisherService,
 
   var status: VehicleStatus = VehicleStatus.empty
 
+  // Reproduce the state after an actor (re)start
   val receiveRecover: Receive = {
     case event: VehicleFuelStatusEvent             ⇒ updateFuelState(event)
     case event: VehiclePositionEvent               ⇒ updatePositionState(event)
@@ -28,6 +29,7 @@ class VehicleActor(publisher: PublisherService,
     case RecoveryCompleted                         ⇒ log.info("finish recovery with status: " + status)
   }
 
+  // Handle new commands
   val receiveCommand: Receive = {
     case e: VehicleFuelStatusComnd => handleFuelStatus(e)
     case e: VehiclePositionCmnd    => handleVehiclePosition(e)
@@ -58,7 +60,8 @@ class VehicleActor(publisher: PublisherService,
 
   /**
     * Want to avoid wrong events due to vehicle bounds on the road so we only
-    * accept messages which its
+    * accept messages which its fuel percent is >= than the previous state or
+    * the inactivity period is greater than 20 secs (filling the tank)
     */
   def validateFuelEvent(fuelCmd: VehicleFuelStatusComnd): Boolean =
     status.currentFuelPercent == -1 ||
