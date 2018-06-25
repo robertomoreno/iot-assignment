@@ -8,4 +8,5 @@ object Version {
   val AKKA_PERSISTENCE_CASSANDRA = "0.85"
   val SLF4J = "1.7.25"
   val PHANTON = "2.24.6"
+  val SCALATEST = "3.0.5"
 }

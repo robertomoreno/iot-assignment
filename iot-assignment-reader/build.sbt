@@ -5,6 +5,11 @@ version := "0.1.0-SNAPSHOT"
 
 val mainClassName = "iot.assignment.Boot"
 
+libraryDependencies ++= Seq (
+  "com.typesafe.akka" %% "akka-testkit" % Version.AKKA          % Test,
+  "org.scalatest"     %%  "scalatest"   % Version.SCALATEST     % Test
+)
+
 mainClass in (Compile,run) := Option(mainClassName)
 
 // --- Assembly

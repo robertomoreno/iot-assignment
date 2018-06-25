@@ -7,5 +7,6 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-cluster-sharding"      %  Version.AKKA,
   "org.slf4j"         % "slf4j-simple"                % Version.SLF4J,
 
-  "com.typesafe.akka" %% "akka-testkit"          % Version.AKKA         % Test,
+  "org.scalatest"     %%  "scalatest"                 % Version.SCALATEST    % Test,
+  "com.typesafe.akka" %% "akka-testkit"               % Version.AKKA         % Test
 )
