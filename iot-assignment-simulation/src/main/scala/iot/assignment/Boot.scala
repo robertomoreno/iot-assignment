@@ -36,7 +36,7 @@ object Boot extends App with VehicleJsonProtocol{
     system.scheduler.scheduleOnce(1 second) {
       val newEvent = e.copy(
         timestamp = System.currentTimeMillis,
-        fuelStatusPercent = e.fuelStatusPercent - new Random().nextInt(3)
+        fuelStatusPercent = e.fuelStatusPercent - new Random().nextFloat()
       )
       generateCall(newEvent)
     }
@@ -47,8 +47,8 @@ object Boot extends App with VehicleJsonProtocol{
       val newEvent = e.copy(
         timestamp = System.currentTimeMillis,
         position = Position(
-          e.position.x - 10 - new Random().nextInt(20),
-          e.position.y - 10 - new Random().nextInt(20)
+          e.position.x - 10 + new Random().nextFloat()*20,
+          e.position.y - 10 + new Random().nextFloat()*20
         )
       )
       generateCall(newEvent)
@@ -74,13 +74,10 @@ object Boot extends App with VehicleJsonProtocol{
 // ---- RUN ----
 
   (1 to clientNumber).foreach { id =>
-    val fuel = VehicleFuelStatusComnd(id.toString, System.currentTimeMillis, 100)
-    val position = VehiclePositionCmnd(
-      id.toString,
-      System.currentTimeMillis,
-      Position(10 - new Random().nextInt(20), 10 - new Random().nextInt(20))
-    )
+    val timestamp = System.currentTimeMillis
+    val fuel = VehicleFuelStatusComnd(id.toString, timestamp, 100)
     generateCall(fuel)
+    val position = VehiclePositionCmnd(id.toString, timestamp, Position(0, 0))
     generateCall(position)
   }
 
